@@ -26,7 +26,7 @@ int search_count(char *filename, char *target) {
 
 	while (fgets(line, sizeof(line), file) != NULL) {
         char *match = line;
-        match[strcspn(match, "\r\n")] = '\0';
+        match[strcspn(match, "\t\r\n")] = '\0';
         while ((match = strstr(match, target)) != NULL) {
             count++;
             match += target_len;
@@ -59,7 +59,7 @@ struct count_result search_instance(char *filename,char *target){
 
 	while (fgets(line, sizeof(line), file) != NULL) {
         char *match = line;
-        match[strcspn(match, "\r\n")] = '\0';
+        match[strcspn(match, "\t\r\n")] = '\0';
         while ((match = strstr(match, target)) != NULL) {
             if (result.instances == NULL) {
                 result.instances = malloc(sizeof(char *));
