@@ -1,1 +1,1 @@
-(1) The time command shows how long the grep program took to run. It took 0.031 seconds of real time, 0.014 seconds of user CPU time, and 0.011 seconds of system CPU time. The program found 207 instances of the word "help" in data/warnpeace.txt.
+(1) The time command shows how long the grep program took to run. It took 0.031 seconds of real time, 0.015 seconds of user CPU time, and 0.012 seconds of system CPU time. The program Found 207 of help in data/warnpeace.txt.

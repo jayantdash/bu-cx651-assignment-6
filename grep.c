@@ -18,12 +18,12 @@ int main(int argc, char** argv) {
 
     if (strcmp(argv[1], "count") == 0) {
         int count = search_count(argv[2], argv[3]);
-        printf("%d\n", count);
+        printf("Found %d of %s in %s\n", count, argv[3], argv[2]);
     } else if (strcmp(argv[1], "instance") == 0) {
         struct count_result result = search_instance(argv[2], argv[3]);
-        printf("%d\n", result.count);
+        printf("Found %d of %s in %s\n", result.count, argv[3], argv[2]);
         for (int i = 0; i < result.count; i++) {
-            printf("%s\n", result.instances[i]);
+            printf("result.instance[%d]: %s\n", i, result.instances[i]);
             free(result.instances[i]);
         }
         free(result.instances);
