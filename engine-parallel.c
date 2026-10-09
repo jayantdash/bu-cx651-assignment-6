@@ -178,5 +178,50 @@ int search_count(char *filename, char *target) {
 }
 
 struct count_result search_instance(char *filename,char *target){
+    size_t target_len = strlen(target);
+
+    struct count_result result = {0,NULL};
+	if (filename == NULL || target == NULL || target_len == 0) {
+		return result;
+	}
+
+    struct stat fileInfo;
+    if (stat(filename, &fileInfo) != 0 || fileInfo.st_size <= 0) {
+        return result;
+    }
+
+    pthread_t threads[NUM_THREADS];
+    struct worker_args args[NUM_THREADS];
     
+    long fileSize = (long)fileInfo.st_size;
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+        args[i].filename = filename;
+        args[i].target = target;
+        args[i].start = fileSize * i / NUM_THREADS;
+        args[i].end = fileSize * (i + 1) / NUM_THREADS;
+        pthread_create(&threads[i], NULL, count_worker, &args[i]);
+    }
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+        void *worker_result = NULL;
+        if (pthread_join(threads[i], &worker_result) == 0) {
+            struct count_result *worker = (struct count_result *)worker_result;
+
+            for (int j = 0; j < worker->count; j++) {
+                char **new_instances = realloc(result.instances, (result.count + 1) * sizeof(char *));
+                if (new_instances == NULL) {
+                    continue;
+                }
+                result.instances = new_instances;
+                result.instances[result.count] = worker->instances[j];
+                result.count++;
+            }
+
+            free(worker->instances);
+            free(worker);
+        }
+    }
+    
+    return result;
 }
