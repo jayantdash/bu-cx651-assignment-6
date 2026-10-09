@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #define MAX_LINE_LENGTH 256
-#define NUM_THREADS 5
+#define NUM_THREADS 10
 
 struct worker_args {
     char *filename;
@@ -48,17 +48,24 @@ void checkAndMoveToNextLine(FILE *file) {
 void *instance_worker(void *arg) {
     struct worker_args *args = arg;
     
-    struct count_result result = {0, NULL};
+    struct count_result *result = malloc(sizeof(struct count_result));
+    
+    if (result == NULL) {
+        return NULL;
+    }
+
+    result->count = 0;
+    result->instances = NULL;
     
     size_t target_len = strlen(args->target);
 
 	if (args->filename == NULL || args->target == NULL || target_len == 0) {
-		return (void *)&result;
+		return NULL;
 	}
 
 	FILE *file = fopen(args->filename, "r");
 	if (file == NULL) {
-		return (void *)&result;
+		return NULL;
 	}
 
     // Move the file pointer to the start of the assigned chunk
@@ -74,29 +81,27 @@ void *instance_worker(void *arg) {
         match[strcspn(match, "\t\r\n")] = '\0';
         while ((match = strstr(match, args->target)) != NULL) {
             // Allocate or reallocate memory for storing instances of matches
-            if (result.instances == NULL) {
-                result.instances = malloc(sizeof(char *));
-                if (result.instances == NULL) {
-                    fclose(file);
-                    return (void *)&result;;
-                }
-            } else {
-                // Reallocate memory to accommodate the new instance
-                char **new_instances = realloc(result.instances, (result.count + 1) * sizeof(char *));
-                if (new_instances == NULL) {
-                    fclose(file);
-                    return (void *)&result;
-                }
-                result.instances = new_instances;
+            char **new_instances = realloc(result->instances, (result->count + 1) * sizeof(char *));
+            if (new_instances == NULL) {
+                fclose(file);
+                return result;
             }
-            result.count++;
-            result.instances[result.count - 1] = strdup(match);
-            match += target_len;
+
+            result->instances = new_instances;
+            result->instances[result->count] = strdup(match);
+
+            if (result->instances[result->count] == NULL) {
+                fclose(file);
+                return result;
+            }
+
+            result->count++;
+            match += target_len;            
         }        
     }
 
     fclose(file);
-    return (void *)&result;
+    return result;
 }
 
 void *count_worker(void *arg) {
