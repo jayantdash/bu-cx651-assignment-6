@@ -88,7 +88,7 @@ void *instance_worker(void *arg) {
             }
 
             result->instances = new_instances;
-            result->instances[result->count] = strdup(match);
+            result->instances[result->count] = strdup(line);
 
             if (result->instances[result->count] == NULL) {
                 fclose(file);

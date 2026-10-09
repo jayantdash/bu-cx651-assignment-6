@@ -76,7 +76,7 @@ struct count_result search_instance(char *filename,char *target){
                 result.instances = new_instances;
             }
             result.count++;
-            result.instances[result.count - 1] = strdup(match);
+            result.instances[result.count - 1] = strdup(line);
             match += target_len;
         }        
     }
