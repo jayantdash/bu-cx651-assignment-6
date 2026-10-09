@@ -53,12 +53,12 @@ void *instance_worker(void *arg) {
     size_t target_len = strlen(args->target);
 
 	if (args->filename == NULL || args->target == NULL || target_len == 0) {
-		return NULL;
+		return (void *)&result;
 	}
 
 	FILE *file = fopen(args->filename, "r");
 	if (file == NULL) {
-		return NULL;
+		return (void *)&result;
 	}
 
     // Move the file pointer to the start of the assigned chunk
@@ -78,14 +78,14 @@ void *instance_worker(void *arg) {
                 result.instances = malloc(sizeof(char *));
                 if (result.instances == NULL) {
                     fclose(file);
-                    return NULL;
+                    return (void *)&result;;
                 }
             } else {
                 // Reallocate memory to accommodate the new instance
                 char **new_instances = realloc(result.instances, (result.count + 1) * sizeof(char *));
                 if (new_instances == NULL) {
                     fclose(file);
-                    return NULL;
+                    return (void *)&result;
                 }
                 result.instances = new_instances;
             }
@@ -96,7 +96,7 @@ void *instance_worker(void *arg) {
     }
 
     fclose(file);
-    return &result;
+    return (void *)&result;
 }
 
 void *count_worker(void *arg) {
@@ -200,7 +200,7 @@ struct count_result search_instance(char *filename,char *target){
         args[i].target = target;
         args[i].start = fileSize * i / NUM_THREADS;
         args[i].end = fileSize * (i + 1) / NUM_THREADS;
-        pthread_create(&threads[i], NULL, count_worker, &args[i]);
+        pthread_create(&threads[i], NULL, instance_worker, &args[i]);
     }
 
     for (int i = 0; i < NUM_THREADS; i++) {
