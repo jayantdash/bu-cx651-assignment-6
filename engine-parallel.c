@@ -19,7 +19,7 @@ struct worker_args {
     long end; //end of the chunk to process
 };
 
-static void freeMemory(struct count_result *result) {
+void freeMemory(struct count_result *result) {
     if (result == NULL) {
         return;
     }
