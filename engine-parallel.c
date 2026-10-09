@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #define MAX_LINE_LENGTH 256
-#define NUM_THREADS 10
+#define NUM_THREADS 100
 
 struct worker_args {
     char *filename;
@@ -18,6 +18,17 @@ struct worker_args {
     long start; //start of the chunk to process
     long end; //end of the chunk to process
 };
+
+static void freeMemory(struct count_result *result) {
+    if (result == NULL) {
+        return;
+    }
+    for (int i = 0; i < result->count; i++) {
+        free(result->instances[i]);
+    }
+    free(result->instances);
+    free(result);
+}
 
 // This function checks if the current file position is at the beginning of a line.
 // If not, it moves the file pointer to the beginning of the next line.
@@ -47,9 +58,12 @@ void checkAndMoveToNextLine(FILE *file) {
 
 void *instance_worker(void *arg) {
     struct worker_args *args = arg;
-    
+    if (args == NULL || args->filename == NULL || args->target == NULL || args->target[0] == '\0') {
+        return NULL;
+    }
+
+    size_t target_len = strlen(args->target);
     struct count_result *result = malloc(sizeof(struct count_result));
-    
     if (result == NULL) {
         return NULL;
     }
@@ -57,14 +71,9 @@ void *instance_worker(void *arg) {
     result->count = 0;
     result->instances = NULL;
     
-    size_t target_len = strlen(args->target);
-
-	if (args->filename == NULL || args->target == NULL || target_len == 0) {
-		return NULL;
-	}
-
 	FILE *file = fopen(args->filename, "r");
 	if (file == NULL) {
+        freeMemory(result);
 		return NULL;
 	}
 
@@ -84,7 +93,8 @@ void *instance_worker(void *arg) {
             char **new_instances = realloc(result->instances, (result->count + 1) * sizeof(char *));
             if (new_instances == NULL) {
                 fclose(file);
-                return result;
+                freeMemory(result);
+                return NULL;
             }
 
             result->instances = new_instances;
@@ -92,7 +102,8 @@ void *instance_worker(void *arg) {
 
             if (result->instances[result->count] == NULL) {
                 fclose(file);
-                return result;
+                freeMemory(result);
+                return NULL;
             }
 
             result->count++;
@@ -146,10 +157,7 @@ void *count_worker(void *arg) {
 
 
 int search_count(char *filename, char *target) {
-
-    size_t target_len = strlen(target);
-
-	if (filename == NULL || target == NULL || target_len == 0) {
+    if (filename == NULL || target == NULL || target[0] == '\0') {
 		return 0;
 	}
 
@@ -183,10 +191,8 @@ int search_count(char *filename, char *target) {
 }
 
 struct count_result search_instance(char *filename,char *target){
-    size_t target_len = strlen(target);
-
     struct count_result result = {0,NULL};
-	if (filename == NULL || target == NULL || target_len == 0) {
+    if (filename == NULL || target == NULL || target[0] == '\0') {
 		return result;
 	}
 
@@ -199,6 +205,7 @@ struct count_result search_instance(char *filename,char *target){
     struct worker_args args[NUM_THREADS];
     
     long fileSize = (long)fileInfo.st_size;
+    bool failed = false;
 
     for (int i = 0; i < NUM_THREADS; i++) {
         args[i].filename = filename;
@@ -212,20 +219,35 @@ struct count_result search_instance(char *filename,char *target){
         void *worker_result = NULL;
         if (pthread_join(threads[i], &worker_result) == 0) {
             struct count_result *worker = (struct count_result *)worker_result;
+            if (worker == NULL) {
+                failed = true;
+                continue;
+            }
 
             for (int j = 0; j < worker->count; j++) {
                 char **new_instances = realloc(result.instances, (result.count + 1) * sizeof(char *));
                 if (new_instances == NULL) {
+                    failed = true;
                     continue;
                 }
                 result.instances = new_instances;
                 result.instances[result.count] = worker->instances[j];
                 result.count++;
+                worker->instances[j] = NULL;
             }
 
-            free(worker->instances);
-            free(worker);
+            freeMemory(worker);
+        } else {
+            failed = true;
         }
+    }
+
+    if (failed) {
+        for (int i = 0; i < result.count; i++) {
+            free(result.instances[i]);
+        }
+        free(result.instances);
+        result = (struct count_result){0, NULL};
     }
     
     return result;
